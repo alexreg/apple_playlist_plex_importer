@@ -1,5 +1,6 @@
 import re
 
+from pathlib import Path
 from typing import Iterable, Tuple
 
 from plexapi.myplex import MyPlexAccount
@@ -45,6 +46,7 @@ def search_plex_tracks(
         apple_album: str,
         apple_artist: str,
         apple_size: int,
+        location_path: str,
     ) -> Tuple[Iterable[Track], Iterable[Track], Iterable[Track]]:
     """Searches through a list of plex tracks for ones that match the
         data provided in the Apple playlist.
@@ -54,6 +56,7 @@ def search_plex_tracks(
         :param apple_album: Album name of the track from Apple playlist.
         :param apple_artist: Artist name of the track from Apple playlist.
         :param apple_size: Size in bytes of the track from Apple playlist.
+        :param location_path: Path to the file of the track from Apple playlist.
         :returns: A Tuple of lists of matches, partials, and name-only matched tracks.
     """
 
@@ -73,6 +76,9 @@ def search_plex_tracks(
         else:
             file_name = file.lower()
 
+        location_match = (Path(file_path).resolve() == Path(location_path).resolve())
+        # print("{} | {}".format(file_path, location_path))
+
         plex_title = track.title and re.search(
             TRACK_NAME_REGEX, track.title).groups()[0].lower()
         track_title = re.search(
@@ -86,7 +92,9 @@ def search_plex_tracks(
         )
 
         size_match = str(plex_size) == str(apple_size)
-        if title_match or size_match:
+
+        # if title_match or size_match:
+        if location_match:
             plex_album = track.parentTitle.lower()
             album_match = plex_album in (album_folder, apple_album)
             artist_match = apple_artist.lower() in (

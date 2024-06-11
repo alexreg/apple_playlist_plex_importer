@@ -1,3 +1,5 @@
+import urllib.parse
+
 from datetime import datetime
 from getpass import getpass
 from typing import Dict, Iterable
@@ -32,8 +34,15 @@ def process_apple_list(
         track_name = item["Name"]
         apple_album_artist = item.get("Album Artist")
         apple_album = item.get("Album")
+        location = item.get("Location")
         artist = apple_artist or apple_album_artist or ""
         plex_track = PLEX_TRACK_CACHE.get(apple_track_id)
+
+        location_url = urllib.parse.urlparse(urllib.parse.unquote(location))
+        if location_url.scheme == "file":
+            location_path = location_url.path
+        else:
+            location_path = None
 
         if plex_track:
             playlist_tracks.append(plex_track)
@@ -44,6 +53,7 @@ def process_apple_list(
                 apple_album,
                 artist,
                 item.get("Size"),
+                location_path,
             )
 
             if results:
@@ -112,14 +122,16 @@ def main():
         pbar = appl_playlists
 
     for list_name, list_items in pbar:
-        pbar.set_description("Processing list {}".format(list_name).ljust(35))
+        if not DEBUG:
+            pbar.set_description("Processing list {}".format(list_name).ljust(35))
         apple_tracks = [
             appl_xml["Tracks"][str(item["Track ID"])] for item in list_items
         ]
         results = process_apple_list(apple_tracks, plex_tracks)
-        pbar.set_description("Have results, creating list {} on server".format(list_name))
+        if not DEBUG:
+            pbar.set_description("Have results, creating list {} on server".format(list_name))
         if results:
-            plex_server.createPlaylist(list_name, results)
+            plex_server.createPlaylist(list_name, items = results)
         elif DEBUG:
             print("Cannot create empty playlist {}.".format(list_name))
         else:
